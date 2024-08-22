@@ -2,6 +2,7 @@ package guru.springframework.spring6resttemplate.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
 
@@ -13,6 +14,7 @@ import java.util.List;
  */
 @Getter
 @ToString
+@EqualsAndHashCode
 public class BeerDTOPage {
     private int pageNumber;
     private int pageSize;

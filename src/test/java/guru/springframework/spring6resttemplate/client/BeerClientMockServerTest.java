@@ -16,6 +16,7 @@ import org.springframework.boot.test.autoconfigure.web.client.RestClientTest;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.support.BasicAuthenticationInterceptor;
 import org.springframework.test.web.client.ExpectedCount;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.HttpClientErrorException;
@@ -60,6 +61,7 @@ public class BeerClientMockServerTest {
     void setUp() {
         RestTemplate restTemplate = new RestTemplate();
         restTemplate.setUriTemplateHandler(new DefaultUriBuilderFactory(ROOT_URL));
+        restTemplate.getInterceptors().add(new BasicAuthenticationInterceptor("restadmin", "password"));
         Mockito.when(beerRestTemplateBuilder.build()).thenReturn(restTemplate);
         mockServer = MockRestServiceServer.createServer(restTemplate);
         beerClient = new BeerClientImpl(beerRestTemplateBuilder);
@@ -78,6 +80,7 @@ public class BeerClientMockServerTest {
         mockServer.expect(ExpectedCount.once(),
                         requestTo(BEER_URL))
                 .andExpect(method(HttpMethod.GET))
+                .andExpect(header("Authorization", "Basic cmVzdGFkbWluOnBhc3N3b3Jk"))
                 .andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).
                         body(objectMapper.writeValueAsString(stella)));
         BeerDTOPage beerDTOPage = beerClient.listBeers();
@@ -104,6 +107,7 @@ public class BeerClientMockServerTest {
 
         //When
         mockServer.expect(requestTo(uri)).andExpect(method(HttpMethod.GET))
+                .andExpect(header("Authorization", "Basic cmVzdGFkbWluOnBhc3N3b3Jk"))
                 .andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON)
                         .body(objectMapper.writeValueAsString(stella)));
         BeerDTOPage beerDTOPage = beerClient.listBeers(Map.of("beerName", "Stella"));
@@ -129,6 +133,7 @@ public class BeerClientMockServerTest {
         // When
         mockServer.expect(ExpectedCount.once(),
                         requestTo(BEER_URL + "/" + stella.getId().toString()))
+                .andExpect(header("Authorization", "Basic cmVzdGFkbWluOnBhc3N3b3Jk"))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).
                         body(objectMapper.writeValueAsString(stella)));

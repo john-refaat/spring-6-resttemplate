@@ -16,6 +16,12 @@ public class BeerRestTemplateBuilder  {
     @Value("${beer.webservice.base.url}")
     private String baseURL;
 
+    @Value("${rest.template.username}")
+    private String username;
+
+    @Value("${rest.template.password}")
+    private String password;
+
     private final RestTemplateBuilder restTemplateBuilder;
 
     public BeerRestTemplateBuilder(RestTemplateBuilder restTemplateBuilder) {
@@ -23,7 +29,8 @@ public class BeerRestTemplateBuilder  {
     }
 
     public RestTemplate build() {
-        return restTemplateBuilder.uriTemplateHandler(new DefaultUriBuilderFactory(baseURL)).build();
+        return restTemplateBuilder.basicAuthentication(username, password)
+                .uriTemplateHandler(new DefaultUriBuilderFactory(baseURL)).build();
     }
 
 }

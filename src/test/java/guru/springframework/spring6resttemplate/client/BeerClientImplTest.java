@@ -20,6 +20,13 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 class BeerClientImplTest {
 
+    public static final BeerDTO NEW_BEER = BeerDTO.builder()
+            .beerName("Stella")
+            .beerStyle(BeerStyle.ALE)
+            .upc("1234567890123")
+            .price(BigDecimal.valueOf(9.99))
+            .build();
+
     @Autowired
     BeerClientImpl beerClient;
 
@@ -68,24 +75,18 @@ class BeerClientImplTest {
 
     @Test
     void createBeer() {
-        BeerDTO newBeer = BeerDTO.builder()
-                .beerName("Stella")
-                .beerStyle(BeerStyle.ALE)
-                .upc("1234567890123")
-                .price(BigDecimal.valueOf(9.99))
-                .build();
-        BeerDTO beer = beerClient.createBeer(newBeer);
+        BeerDTO beer = beerClient.createBeer(NEW_BEER);
         assertNotNull(beer);
-        assertEquals(newBeer.getBeerName(), beer.getBeerName());
-            assertEquals(newBeer.getBeerStyle(), beer.getBeerStyle());
+        assertEquals(NEW_BEER.getBeerName(), beer.getBeerName());
+            assertEquals(NEW_BEER.getBeerStyle(), beer.getBeerStyle());
         System.out.println(beer);
     }
 
     @Test
     void updateBeer() {
-        BeerDTO beer = beerClient.listBeers().getBeers().get(0);
+        BeerDTO beer = beerClient.createBeer(NEW_BEER);
         System.out.println(beer);
-        String newName = beer.getBeerName() + "updated";
+        String newName = beer.getBeerName() + "  updated";
         beer.setBeerName(newName);
         beer.setPrice(beer.getPrice().add(BigDecimal.ONE));
         BeerDTO updatedBeer = beerClient.updateBeer(beer.getId().toString(), beer);
@@ -99,9 +100,7 @@ class BeerClientImplTest {
 
     @Test
     void deleteBeer() {
-        BeerDTO beer = BeerDTO.builder().beerName("Stella").beerStyle(BeerStyle.WHEAT)
-                        .upc("34567890234567").price(BigDecimal.valueOf(12.5)).build();
-        BeerDTO createdBeer = beerClient.createBeer(beer);
+        BeerDTO createdBeer = beerClient.createBeer(NEW_BEER);
         System.out.println(createdBeer);
         beerClient.deleteBeer(createdBeer.getId().toString());
         assertThrows(HttpClientErrorException.class, () -> beerClient.deleteBeer(createdBeer.getId().toString()));

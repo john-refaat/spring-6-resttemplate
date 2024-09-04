@@ -2,6 +2,7 @@ package guru.springframework.spring6resttemplate.client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import guru.springframework.spring6resttemplate.config.OAuthClientInterceptor;
 import guru.springframework.spring6resttemplate.model.BeerDTO;
 import guru.springframework.spring6resttemplate.model.BeerDTOPage;
 import guru.springframework.spring6resttemplate.model.BeerStyle;
@@ -13,10 +14,17 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.client.RestClientTest;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.support.BasicAuthenticationInterceptor;
+import org.springframework.security.oauth2.client.OAuth2AuthorizeRequest;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.test.web.client.ExpectedCount;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.HttpClientErrorException;
@@ -26,12 +34,15 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.math.BigDecimal;
 import java.net.URI;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withResourceNotFound;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
@@ -46,25 +57,49 @@ public class BeerClientMockServerTest {
 
     public static final String ROOT_URL = "http://localhost:8080/api/v1/";
     public static final String BEER_URL = ROOT_URL + "beer";
+    public static final String TOKEN = UUID.randomUUID().toString();
+    public static final ClientRegistration CLIENT_REGISTRATION = ClientRegistration.withRegistrationId("springauth")
+            .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+            .clientId("clientid")
+            .clientSecret("clientsecret").tokenUri("test").build();
+    public static final String AUTH_BASIC = "Basic cmVzdGFkbWluOnBhc3N3b3Jk";
+    public static final String AUTH_BEARER_TOKEN = "Bearer "+TOKEN;
 
     BeerClient beerClient;
 
     @Mock
-    BeerRestTemplateBuilder beerRestTemplateBuilder;
+    RestTemplateBuilder restTemplateBuilder;
 
     MockRestServiceServer mockServer;
 
     @Autowired
     ObjectMapper objectMapper;
 
+    @Mock
+    OAuth2AuthorizedClientManager oAuth2AuthorizedClientManager;
+
+    @Mock
+    ClientRegistrationRepository clientRegistrationRepository;
+
+    OAuthClientInterceptor oAuthClientInterceptor;
+
     @BeforeEach
     void setUp() {
+        Mockito.when(clientRegistrationRepository.findByRegistrationId(anyString())).thenReturn(CLIENT_REGISTRATION);
+        Mockito.when(oAuth2AuthorizedClientManager.authorize(any(OAuth2AuthorizeRequest.class)))
+                .thenReturn(new OAuth2AuthorizedClient(CLIENT_REGISTRATION, "test",
+                        new OAuth2AccessToken(OAuth2AccessToken.TokenType.BEARER, TOKEN, Instant.MIN, Instant.MAX)));
+
+        oAuthClientInterceptor = new OAuthClientInterceptor(oAuth2AuthorizedClientManager);
+
+
         RestTemplate restTemplate = new RestTemplate();
         restTemplate.setUriTemplateHandler(new DefaultUriBuilderFactory(ROOT_URL));
-        restTemplate.getInterceptors().add(new BasicAuthenticationInterceptor("restadmin", "password"));
-        Mockito.when(beerRestTemplateBuilder.build()).thenReturn(restTemplate);
+        // restTemplate.getInterceptors().add(new BasicAuthenticationInterceptor("restadmin", "password"));
+        restTemplate.getInterceptors().add(oAuthClientInterceptor);
+        Mockito.when(restTemplateBuilder.build()).thenReturn(restTemplate);
         mockServer = MockRestServiceServer.createServer(restTemplate);
-        beerClient = new BeerClientImpl(beerRestTemplateBuilder);
+        beerClient = new BeerClientImpl(restTemplateBuilder);
     }
 
 
@@ -80,7 +115,8 @@ public class BeerClientMockServerTest {
         mockServer.expect(ExpectedCount.once(),
                         requestTo(BEER_URL))
                 .andExpect(method(HttpMethod.GET))
-                .andExpect(header("Authorization", "Basic cmVzdGFkbWluOnBhc3N3b3Jk"))
+                .andExpect(header("Authorization", AUTH_BEARER_TOKEN))
+                //.andExpect(header("Authorization", "Basic cmVzdGFkbWluOnBhc3N3b3Jk"))
                 .andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).
                         body(objectMapper.writeValueAsString(stella)));
         BeerDTOPage beerDTOPage = beerClient.listBeers();
@@ -107,7 +143,8 @@ public class BeerClientMockServerTest {
 
         //When
         mockServer.expect(requestTo(uri)).andExpect(method(HttpMethod.GET))
-                .andExpect(header("Authorization", "Basic cmVzdGFkbWluOnBhc3N3b3Jk"))
+                //.andExpect(header("Authorization", AUTH_BASIC))
+                .andExpect(header("Authorization", AUTH_BEARER_TOKEN))
                 .andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON)
                         .body(objectMapper.writeValueAsString(stella)));
         BeerDTOPage beerDTOPage = beerClient.listBeers(Map.of("beerName", "Stella"));
@@ -133,7 +170,8 @@ public class BeerClientMockServerTest {
         // When
         mockServer.expect(ExpectedCount.once(),
                         requestTo(BEER_URL + "/" + stella.getId().toString()))
-                .andExpect(header("Authorization", "Basic cmVzdGFkbWluOnBhc3N3b3Jk"))
+                //.andExpect(header("Authorization", AUTH_BASIC))
+                .andExpect(header("Authorization", AUTH_BEARER_TOKEN))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).
                         body(objectMapper.writeValueAsString(stella)));
@@ -191,7 +229,7 @@ public class BeerClientMockServerTest {
                 .andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).
                         body(objectMapper.writeValueAsString(updatedBeer)));
         mockServer.expect(ExpectedCount.once(),
-                requestToUriTemplate(BEER_URL + "/{beerId}", stella.getId().toString()))
+                        requestToUriTemplate(BEER_URL + "/{beerId}", stella.getId().toString()))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).
                         body(objectMapper.writeValueAsString(updatedBeer)));
@@ -211,7 +249,7 @@ public class BeerClientMockServerTest {
     @Test
     void deleteBeer() {
         // Given
-        String beerId =  UUID.randomUUID().toString();
+        String beerId = UUID.randomUUID().toString();
         log.info("Beer Id: {}", beerId);
         // When
         mockServer.expect(ExpectedCount.once(),
@@ -227,14 +265,14 @@ public class BeerClientMockServerTest {
     @Test
     void deleteBeerNotFound() {
         // Given
-        String beerId =  UUID.randomUUID().toString();
+        String beerId = UUID.randomUUID().toString();
         // When
         mockServer.expect(ExpectedCount.once(),
                         requestToUriTemplate(BEER_URL + "/{beerId}", beerId))
                 .andExpect(method(HttpMethod.DELETE))
                 .andRespond(withResourceNotFound());
         Assertions.assertThrows(HttpClientErrorException.class,
-                () ->beerClient.deleteBeer(beerId));
+                () -> beerClient.deleteBeer(beerId));
 
         // Then
         mockServer.verify();

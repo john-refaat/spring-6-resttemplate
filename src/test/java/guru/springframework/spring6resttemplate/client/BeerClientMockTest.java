@@ -11,6 +11,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -36,17 +37,13 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class BeerClientMockTest {
 
-    static final String ROOT_URL = "http://localhost:8080";
-
-
     BeerClient beerClient;
 
     @Mock
     RestTemplate restTemplate;
 
     @Mock
-    BeerRestTemplateBuilder restTemplateBuilder;
-
+    RestTemplateBuilder restTemplateBuilder;
 
     @BeforeEach
     void setUp() {

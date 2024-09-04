@@ -4,6 +4,7 @@ import guru.springframework.spring6resttemplate.model.BeerDTO;
 import guru.springframework.spring6resttemplate.model.BeerDTOPage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -22,7 +23,7 @@ import java.util.Map;
 @Service
 public class BeerClientImpl implements BeerClient {
 
-    private final BeerRestTemplateBuilder beerRestTemplateBuilder;
+    private final RestTemplateBuilder restTemplateBuilder;
 
 
     @Override
@@ -32,7 +33,7 @@ public class BeerClientImpl implements BeerClient {
 
     @Override
     public BeerDTOPage listBeers(Map<String, String> parameters) {
-        RestTemplate restTemplate = beerRestTemplateBuilder.build();
+        RestTemplate restTemplate = restTemplateBuilder.build();
 
         UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromUri(URI.create("beer"));
         if (parameters.containsKey("beerName"))
@@ -56,21 +57,21 @@ public class BeerClientImpl implements BeerClient {
 
     @Override
     public BeerDTO getBeerById(String beerId) {
-        RestTemplate restTemplate = beerRestTemplateBuilder.build();
+        RestTemplate restTemplate = restTemplateBuilder.build();
         log.info("GET request to: {}", "beer/" + beerId);
         return restTemplate.getForObject("beer/{beerId}", BeerDTO.class, beerId);
     }
 
     @Override
     public BeerDTO createBeer(BeerDTO newBeer) {
-        RestTemplate restTemplate = beerRestTemplateBuilder.build();
+        RestTemplate restTemplate = restTemplateBuilder.build();
         log.info("POST request to: {}", "beer");
         return restTemplate.postForObject("beer", newBeer, BeerDTO.class);
     }
 
     @Override
     public BeerDTO updateBeer(String beerId, BeerDTO beer) {
-        RestTemplate restTemplate = beerRestTemplateBuilder.build();
+        RestTemplate restTemplate = restTemplateBuilder.build();
         log.info("PUT request to: {}", "beer/" + beerId);
         restTemplate.put("beer/{beerId}", beer, beerId);
         return getBeerById(beerId);
@@ -78,7 +79,7 @@ public class BeerClientImpl implements BeerClient {
 
     @Override
     public void deleteBeer(String beerId) {
-        RestTemplate restTemplate = beerRestTemplateBuilder.build();
+        RestTemplate restTemplate = restTemplateBuilder.build();
         log.info("DELETE request to: {}", "beer/" + beerId);
         restTemplate.delete("beer/{beerId}", beerId);
     }
